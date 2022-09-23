@@ -1,5 +1,7 @@
 import nicehash
-# from time import sleep
+# import os
+import subprocess
+from time import sleep
 
 host = 'https://api2.nicehash.com'
 #host = 'https://api-test.nicehash.com'
@@ -18,17 +20,16 @@ def get_algo_info():
     algos = response_parse(algo_stats)
     return algos
 
-def print_algo(name: str, algo_stats: dict, factor: float):
+def print_algo(name: str, factor: float, algo_stats: dict):
     print("Algo:          {}".format(name))
-    print("Profitability: {}".format(algo_stats[name] * factor))
+    print("Profitability: {}".format(int(algo_stats[name] * factor)))
 
 
 if __name__ == "__main__":
-    """public_api = nicehash.public_api(host, True)
+    while (True):
+        algo_stats = get_algo_info()
+        print_algo("kawpow", 32400000, algo_stats)
+        print_algo("zelhash", 63, algo_stats)
 
-    algo_stats = public_api.get_multialgo_info()
-    print(algo_stats)"""
-    algo_stats = get_algo_info()
-    #print(algo_stats['zelhash'])
-    print_algo("kawpow", algo_stats, 32400000)
-    print_algo("zelhash", algo_stats, 63)
+        subprocess.run(["echo", "Running"])
+        sleep(60)
