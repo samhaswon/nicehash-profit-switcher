@@ -7,25 +7,33 @@ from time import sleep
 host = 'https://api2.nicehash.com'
 #host = 'https://api-test.nicehash.com'
 # Minutes + 1 new most profitable must be profitable
-switch_minutes = 4
+switch_minutes = 2
    
 
-def get_algo_info() -> dict:
+def get_algo_info():
     # api query
-    public_api = nicehash.public_api(host, False)
-    algo_stats = public_api.get_multialgo_info()
+    try:
+        public_api = nicehash.public_api(host, False)
+        algo_stats = public_api.get_multialgo_info()
 
-    # Parse response to dictionary
-    return {algorithm['algorithm'].lower(): float(algorithm['paying'])
-            for algorithm in algo_stats['miningAlgorithms']}
+        # Parse response to dictionary
+        return {algorithm['algorithm'].lower(): float(algorithm['paying'])
+                for algorithm in algo_stats['miningAlgorithms']}
+    except Exception as ex:
+        print("Unexpected error: ", ex)
+        return None
 
 def get_algo_profitability(name: str, factor: float, algo_stats: dict,) -> int:
     return int(algo_stats[name] * factor)
 
 def get_btc_price() -> float:
     # Query the API
-    public_api = nicehash.public_api(host, False)
-    response = public_api.request('GET', '/exchange/api/v2/info/prices', '', None)
+    try:
+        public_api = nicehash.public_api(host, False)
+        response = public_api.request('GET', '/exchange/api/v2/info/prices', '', None)
+    except Exception as ex:
+        print("Unexpected error: ", ex)
+        return -1
 
     # Parse and return the response
     return float(response['BTCUSDT'])
@@ -76,7 +84,7 @@ if __name__ == "__main__":
 
             if current_algo is None:
                 current_algo = most_profitable
-                out = subprocess.Popen(commands[current_algo], shell=True)
+                out = subprocess.Popen(commands[current_algo], stderr=subprocess.STDOUT, shell=True)
                 miner_pid = out.pid
                 print("Starting {}...".format(current_algo))
 
@@ -92,7 +100,7 @@ if __name__ == "__main__":
                 print("Killing {}...".format(current_algo))
                 os.kill(miner_pid, signal.SIGINT)
                 current_algo = most_profitable
-                out = subprocess.Popen(commands[current_algo], shell=True)
+                out = subprocess.Popen(commands[current_algo], stderr=subprocess.STDOUT, shell=True)
                 miner_pid = out.pid
                 print("Starting {}...".format(current_algo))
             
@@ -100,6 +108,7 @@ if __name__ == "__main__":
                 print("Running: {}".format(current_algo))
 
             sleep(60)
+
         # End program on CTRL + C
         except KeyboardInterrupt:
             print("Ending...")
