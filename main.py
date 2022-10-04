@@ -47,7 +47,7 @@ def print_algos(btc_price: float) -> None:
         print("{0: <16}".format(algo), ":", "{0: >4}".format(stats[1]), 
             "mBTC or ${:0.2f}".format(stats[1] / 100000000 * btc_price, 2))
 
-def set_profits(algos: dict, algo_stats: dict):
+def set_profits(algos: dict, algo_stats: dict) -> None:
     for algo, stats in algos.items():
         stats[1] = get_algo_profitability(algo, stats[0], algo_stats)
 
@@ -55,9 +55,9 @@ def set_profits(algos: dict, algo_stats: dict):
 
 if __name__ == "__main__":
     # Info for the algos in the format  name: [(sat/[H/Sol/G]), pay(set to 0)]
-    algos = {"kawpow": [32400000, 0], "zelhash": [63, 0], "daggerhashimoto": [71500000, 0]}
+    algos = {"kawpow": [32400000, 0], "zelhash": [63, 0], "daggerhashimoto": [71500000, 0], "autolykos": [165500000, 0]}
     # Commands for the above algos in the format  name: command
-    commands = {"kawpow": "py delete.py", "zelhash": "py delete.py", "daggerhashimoto": "py delete.py"}
+    commands = {"kawpow": "py delete.py", "zelhash": "py delete.py", "daggerhashimoto": "py delete.py", "autolykos": "py delete.py"}
 
     switch_to_algo = None, 0
     current_algo = None
@@ -85,6 +85,7 @@ if __name__ == "__main__":
                     switch_to_algo = switch_to_algo[0], switch_to_algo[1] + 1
                 else:
                     switch_to_algo = most_profitable, 1
+
                 print("Still running {} for {} more minutes".format(current_algo, switch_minutes - switch_to_algo[1]))
 
             elif current_algo is not most_profitable and switch_to_algo[1] >= switch_minutes:
