@@ -1,5 +1,6 @@
 import nicehash
 import subprocess
+import os
 from signal import SIGINT, SIGTERM
 from time import sleep
 
@@ -65,6 +66,7 @@ class Switch_Info(object):
 
     def print_algos(self, btc_price: float) -> None:
         """Print algos and their profitability in mBTC and USDT"""
+        print("")
         for algo, stats in self.algos.items():
             print("{0: <16}".format(algo), ":", "{0: >4}".format(stats[1]), 
                 "mBTC or ${:0.2f}".format(stats[1] / 100000000 * btc_price, 2))
@@ -106,6 +108,7 @@ class Switch_Info(object):
             return self.current_algo
 
         else:
+            self.switch_minutes_left = self.switch_minutes
             return most_profitable
 
 class Switch_Thread(object):
@@ -126,17 +129,24 @@ class Switch_Thread(object):
     def run_miner(self, name: str) -> None:
         if self.current_miner is None:
             self.current_miner = subprocess.Popen([self.cmd_type, 
-                self.comands[name]])
+                self.comands[name]], preexec_fn=os.setsid)
         
         else:
             self.stop()
+            print("Starting {}...".format(name))
             self.current_miner = subprocess.Popen([self.cmd_type, 
-                self.comands[name]])
+                self.comands[name]], preexec_fn=os.setsid)
 
     def stop(self) -> None:
         # Send the keyboard interupt signal then wait
-        self.current_miner.send_signal(SIGINT)
-        self.current_miner.wait(timeout=30)
+        try:
+            print("Killing...")
+            os.killpg(os.getpgid(self.current_miner.pid), SIGINT)
+            sleep(15)
+        except Exception as ex:
+            print("Error: {}".format(ex))
+            self.current_miner.kill()
+        
 
     def set_current(self, name: str) -> None:
         if (name != self.current_algo):
@@ -144,5 +154,5 @@ class Switch_Thread(object):
             self.current_algo = name
 
     def __del__(self):
-        if self.current_algo != None:
-            self.stop()
+    	if self.current_algo != None:
+        	self.stop()
