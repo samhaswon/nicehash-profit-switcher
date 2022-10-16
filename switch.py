@@ -1,6 +1,6 @@
 import nicehash
 import subprocess
-from signal import SIGINT, SIGTERM
+from signal import SIGINT
 from time import sleep
 
 class Switch_Info(object):

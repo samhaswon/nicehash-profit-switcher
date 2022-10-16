@@ -19,7 +19,7 @@ def main():
                     "etchash": "delete.py"}
         host = 'https://api2.nicehash.com'
         algo_switch = Switch_Info(host, 1, algos)
-        mining_switch = Switch_Thread(commands)
+        mining_switch = Switch_Thread(commands, 'python3')
 
         while True:
             current_algo_to_mine = algo_switch.algo_to_mine()
