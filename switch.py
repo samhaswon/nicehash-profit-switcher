@@ -1,6 +1,6 @@
 import nicehash
 import subprocess
-from signal import SIGINT
+from signal import SIGINT, SIGTERM
 from time import sleep
 
 class Switch_Info(object):
@@ -81,7 +81,7 @@ class Switch_Info(object):
         # API calling for stats
         algo_stats = self.get_algo_info()
         btc_price = self.get_btc_price()
-        self.set_profits(self, self.algos, algo_stats)
+        self.set_profits(self.algos, algo_stats)
 
         # Algos printing
         self.print_algos(btc_price)
@@ -96,10 +96,11 @@ class Switch_Info(object):
 
         elif (self.current_algo is not most_profitable and 
                 self.switch_minutes_left > 0):
+            self.switch_minutes_left -= 1
             return self.current_algo
         
         elif (self.current_algo is not most_profitable and 
-                self.switch_minutes_left == 0):
+                self.switch_minutes_left <= 0):
             self.switch_minutes_left = self.switch_minutes
             self.current_algo = most_profitable
             return self.current_algo
@@ -135,11 +136,13 @@ class Switch_Thread(object):
     def stop(self) -> None:
         # Send the keyboard interupt signal then wait
         self.current_miner.send_signal(SIGINT)
-        self.current_miner.wait(timeout=5)
+        self.current_miner.wait(timeout=30)
 
     def set_current(self, name: str) -> None:
-        if name != self.current_algo:
+        if (name != self.current_algo):
             self.run_miner(name)
+            self.current_algo = name
 
     def __del__(self):
-        self.stop()
+        if self.current_algo != None:
+            self.stop()

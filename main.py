@@ -2,7 +2,7 @@ from switch import Switch_Info, Switch_Thread
 from time import sleep
 
 
-def main():
+if __name__ == "__main__":
     try:
         # Setup algos + switch
         # algos format: "name_of_algo": [speed, pay (set to 0)]
@@ -28,6 +28,3 @@ def main():
 
     except KeyboardInterrupt:
         exit(0)
-
-if __name__ == '__main__':
-    main()
