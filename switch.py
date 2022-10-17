@@ -7,11 +7,9 @@ from time import sleep
 class Switch_Info(object):
     """Gets the information needed for the most profitable algorithm to mine"""
 
-    def __init__(
-        self, host = 'https://api2.nicehash.com', switch_minutes = 1,
-        algos = {"kawpow": [32400000, 0], "zelhash": [63, 0], 
-            "daggerhashimoto": [71500000, 0], "autolykos": [165500000, 0],
-            "etchash": [71500000, 0]}
+    def __init__(self, 
+        host = 'https://api2.nicehash.com', switch_minutes = 1,
+        algos = {"etchash": [71500000, 0]}
     ) -> None:
         """ :param host = the api to be queried
             :param switch_minutes = minutes to wait before switching
@@ -36,7 +34,7 @@ class Switch_Info(object):
         except Exception as ex:
             print("Unexpected error: ", ex)
             sleep(5)
-            return self.get_algo_info(self)
+            return self.get_algo_info()
 
     def get_btc_price(self) -> float:
         """query the API for BTC price"""
@@ -98,8 +96,15 @@ class Switch_Info(object):
 
         elif (self.current_algo is not most_profitable and 
                 self.switch_minutes_left > 0):
-            self.switch_minutes_left -= 1
-            return self.current_algo
+            # Faster switching for significantly higher profit algo
+            if (self.algos[most_profitable][1] > 
+                    self.algos[self.current_algo][1] * 1.1):
+                self.current_algo = most_profitable
+                self.switch_minutes_left = self.switch_minutes
+                return self.current_algo
+            else:
+                self.switch_minutes_left -= 1
+                return self.current_algo
         
         elif (self.current_algo is not most_profitable and 
                 self.switch_minutes_left <= 0):
@@ -142,7 +147,7 @@ class Switch_Thread(object):
         try:
             print("Killing...")
             os.killpg(os.getpgid(self.current_miner.pid), SIGINT)
-            sleep(15)
+            sleep(2)
         except Exception as ex:
             print("Error: {}".format(ex))
             self.current_miner.kill()
