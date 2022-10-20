@@ -18,7 +18,7 @@ if __name__ == "__main__":
                     "autolykos": "delete.py", 
                     "etchash": "delete.py"}
         host = 'https://api2.nicehash.com'
-        algo_switch = Switch_Info(host, 1, algos)
+        algo_switch = Switch_Info(host, 1, algos, 20)
         mining_switch = Switch_Thread(commands, 'python3')
 
         while True:

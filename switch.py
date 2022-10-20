@@ -9,11 +9,13 @@ class Switch_Info(object):
 
     def __init__(self, 
         host = 'https://api2.nicehash.com', switch_minutes = 1,
-        algos = {"etchash": [71500000, 0]}
+        algos = {"etchash": [71500000, 0]}, switch_override_pct = 20
     ) -> None:
         """ :param host = the api to be queried
             :param switch_minutes = minutes to wait before switching
             :param algos = Dictionary of the format "name": [speed, pay (set to 0)]
+            :param switch_override_pct = time override for switching in 
+             percent (20% would be input as 20)
         """
         
         self.host = host
@@ -21,6 +23,7 @@ class Switch_Info(object):
         self.switch_minutes_left = self.switch_minutes
         self.algos = algos
         self.current_algo = None
+        self.switch_override_pct = switch_override_pct * 0.01
 
     def get_algo_info(self):
         """api query for algo info"""
@@ -63,11 +66,11 @@ class Switch_Info(object):
         return name
 
     def print_algos(self, btc_price: float) -> None:
-        """Print algos and their profitability in mBTC and USDT"""
+        """Print algos and their profitability in sat and USDT"""
         print("")
         for algo, stats in self.algos.items():
             print("{0: <16}".format(algo), ":", "{0: >4}".format(stats[1]), 
-                "mBTC or ${:0.2f}".format(stats[1] / 100000000 * btc_price, 2))
+                "sat or ${:0.2f}".format(stats[1] / 100000000 * btc_price, 2))
 
     def set_profits(self, algos: dict, algo_stats: dict) -> None:
         """Set the profitability of each algorithm in algos, originally 0"""
@@ -86,7 +89,7 @@ class Switch_Info(object):
         # Algos printing
         self.print_algos(btc_price)
         most_profitable = self.get_most_profit(self.algos)
-        print("\n{} is the most profitable at {}mBTC/day\n".format(
+        print("\n{} is the most profitable at {}sat/day\n".format(
                 most_profitable, self.algos[most_profitable][1]))
 
         # Figure out which algo to mine
@@ -98,7 +101,8 @@ class Switch_Info(object):
                 self.switch_minutes_left > 0):
             # Faster switching for significantly higher profit algo
             if (self.algos[most_profitable][1] > 
-                    self.algos[self.current_algo][1] * 1.1):
+                    self.algos[self.current_algo][1] * (1 + 
+                    self.switch_override_pct)):
                 self.current_algo = most_profitable
                 self.switch_minutes_left = self.switch_minutes
                 return self.current_algo
