@@ -137,6 +137,7 @@ class Switch_Thread(object):
 
     def run_miner(self, name: str) -> None:
         if self.current_miner is None:
+            print("Starting {}...".format(name))
             self.current_miner = subprocess.Popen([self.cmd_type, 
                 self.comands[name]], preexec_fn=os.setsid)
         

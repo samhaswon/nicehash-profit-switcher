@@ -27,4 +27,9 @@ if __name__ == "__main__":
             sleep(60)
 
     except KeyboardInterrupt:
+        print("Exiting...")
         exit(0)
+
+    except Exception as ex:
+        print("Error: {}".format(ex))
+        exit(1)
