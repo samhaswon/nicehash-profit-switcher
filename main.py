@@ -5,7 +5,7 @@ from time import sleep
 if __name__ == "__main__":
     # Setup algos + switch
     # algos format: "name_of_algo": [speed, pay (set to 0)]
-    algos = {"kawpow": [32400000, 0], 
+    algos = {"kawpow": [34900000, 0], 
             "zelhash": [63, 0], 
             "daggerhashimoto": [71500000, 0], 
             "autolykos": [165500000, 0],

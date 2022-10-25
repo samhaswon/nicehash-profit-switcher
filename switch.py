@@ -1,8 +1,42 @@
-import nicehash
 import subprocess
 import os
+import requests
 from signal import SIGINT, SIGTERM
 from time import sleep
+
+class NH_API_Calls(object):
+    """Handler for Nicehash api calls"""
+    def __init__(self, host) -> None:
+        """:param host = the api to be queried"""
+        self.host = host
+
+    def request(self, method: str, path: str):
+        """
+        :param method = http request method
+        :param path = path from host (defined during initialization)
+        : 
+        """
+        url = self.host + path
+
+        s = requests.Session()
+        response = s.request(method.upper(), url)
+
+        if response.status_code == 200:
+            return response.json()
+        elif response.content:
+            raise Exception(str(response.status_code) + ": " + 
+                response.reason + ": " + str(response.content))
+        else:
+            raise Exception(str(response.status_code) + ": " + 
+                response.reason)
+
+    def get_multialgo_info(self):
+        """Gets the paying rate of all nicehash algorithms in a json format"""
+        return self.request('GET', '/main/api/v2/public/simplemultialgo/info/')
+    
+    def get_prices(self):
+        return self.request('GET', '/exchange/api/v2/info/prices')
+
 
 class Switch_Info(object):
     """Gets the information needed for the most profitable algorithm to mine"""
@@ -13,23 +47,23 @@ class Switch_Info(object):
     ) -> None:
         """ :param host = the api to be queried
             :param switch_minutes = minutes to wait before switching
-            :param algos = Dictionary of the format "name": [speed, pay (set to 0)]
+            :param algos = Dictionary of the format "name": [speed, pay (set
+             to 0)]
             :param switch_override_pct = time override for switching in 
              percent (20% would be input as 20)
         """
         
-        self.host = host
         self.switch_minutes = switch_minutes
         self.switch_minutes_left = self.switch_minutes
         self.algos = algos
-        self.current_algo = None
+        self.current_algo = ""
         self.switch_override_pct = switch_override_pct * 0.01
+        self.NH_Query: NH_API_Calls = NH_API_Calls(host)
 
-    def get_algo_info(self):
+    def get_algo_info(self) -> dict:
         """api query for algo info"""
         try:
-            public_api = nicehash.public_api(self.host, False)
-            algo_stats = public_api.get_multialgo_info()
+            algo_stats = self.NH_Query.get_multialgo_info()
 
             # Parse response to dictionary
             return {algorithm['algorithm'].lower(): float(algorithm['paying'])
@@ -42,9 +76,7 @@ class Switch_Info(object):
     def get_btc_price(self) -> float:
         """query the API for BTC price"""
         try:
-            public_api = nicehash.public_api(self.host, False)
-            response = public_api.request('GET', '/exchange/api/v2/info/prices'
-                                            , '', None)
+            response = self.NH_Query.get_prices()
         except Exception as ex:
             print("Unexpected error: ", ex)
             sleep(5)
@@ -70,7 +102,7 @@ class Switch_Info(object):
         print("")
         for algo, stats in self.algos.items():
             print("{0: <16}".format(algo), ":", "{0: >4}".format(stats[1]), 
-                "sat or ${:0.2f}".format(stats[1] / 100000000 * btc_price, 2))
+                "sat or ${:0.2f}".format(stats[1] / 100000000 * btc_price))
 
     def set_profits(self, algos: dict, algo_stats: dict) -> None:
         """Set the profitability of each algorithm in algos, originally 0"""
@@ -130,7 +162,7 @@ class Switch_Thread(object):
              it in your OS (i.e., ./ or .\ or bash or etc.)
         """
         self.comands: dict = commands
-        self.current_algo: str = None
+        self.current_algo: str = ""
         self.current_miner: subprocess.Popen = None
         self.cmd_type: str = cmd_type
 
@@ -163,6 +195,6 @@ class Switch_Thread(object):
             self.run_miner(name)
             self.current_algo = name
 
-    def __del__(self):
+    def __del__(self) -> None:
     	if self.current_algo != None:
         	self.stop()
