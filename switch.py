@@ -56,7 +56,7 @@ class Switch_Info(object):
         self.switch_minutes = switch_minutes
         self.switch_minutes_left = self.switch_minutes
         self.algos = algos
-        self.current_algo = ""
+        self.current_algo = None
         self.switch_override_pct = switch_override_pct * 0.01
         self.NH_Query: NH_API_Calls = NH_API_Calls(host)
 
@@ -130,7 +130,7 @@ class Switch_Info(object):
             return self.current_algo
 
         elif (self.current_algo is not most_profitable and 
-                self.switch_minutes_left > 0):
+                self.switch_minutes_left > 0 and self.current_algo != ''):
             # Faster switching for significantly higher profit algo
             if (self.algos[most_profitable][1] > 
                     self.algos[self.current_algo][1] * (1 + 
