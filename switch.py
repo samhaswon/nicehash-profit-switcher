@@ -42,8 +42,10 @@ class Switch_Info(object):
     """Gets the information needed for the most profitable algorithm to mine"""
 
     def __init__(self, 
-        host = 'https://api2.nicehash.com', switch_minutes = 1,
-        algos = {"etchash": [71500000, 0]}, switch_override_pct = 20
+        host: str = 'https://api2.nicehash.com', 
+        switch_minutes: int = 1,
+        algos: dict[str, list[int]] = {"etchash": [71500000, 0]}, 
+        switch_override_pct: int = 20
     ) -> None:
         """ :param host = the api to be queried
             :param switch_minutes = minutes to wait before switching
@@ -53,11 +55,11 @@ class Switch_Info(object):
              percent (20% would be input as 20)
         """
         
-        self.switch_minutes = switch_minutes
-        self.switch_minutes_left = self.switch_minutes
-        self.algos = algos
-        self.current_algo = None
-        self.switch_override_pct = switch_override_pct * 0.01
+        self.switch_minutes: int = switch_minutes
+        self.switch_minutes_left: int = self.switch_minutes
+        self.algos: dict[str, list[int]] = algos
+        self.current_algo: str = None
+        self.switch_override_pct: float = switch_override_pct * 0.01
         self.NH_Query: NH_API_Calls = NH_API_Calls(host)
 
     def get_algo_info(self) -> dict:
@@ -77,25 +79,16 @@ class Switch_Info(object):
         """query the API for BTC price"""
         try:
             response = self.NH_Query.get_prices()
+            # Parse and return the response
+            return float(response['BTCUSDT'])
         except Exception as ex:
             print("Unexpected error: ", ex)
             sleep(5)
             return self.get_btc_price()
 
-        # Parse and return the response
-        return float(response['BTCUSDT'])
-
     def get_most_profit(self, algos: dict) -> str:
         """Returns the current most profitable coin"""
-        # Grab the first key
-        name = list(algos.keys())[0]
-
-        # Find the most profitable algo
-        for algo, stats in algos.items():
-            if algos[name][1] < stats[1]:
-                name = algo
-        
-        return name
+        return max(algos.items(), key=lambda x: x[1][1])[0]
 
     def print_algos(self, btc_price: float) -> None:
         """Print algos and their profitability in sat and USDT"""
@@ -114,9 +107,8 @@ class Switch_Info(object):
             MUST be externally limited to avoid excessive API calls!
         """
         # API calling for stats
-        algo_stats = self.get_algo_info()
         btc_price = self.get_btc_price()
-        self.set_profits(self.algos, algo_stats)
+        self.set_profits(self.algos, self.get_algo_info())
 
         # Algos printing
         self.print_algos(btc_price)
@@ -125,37 +117,35 @@ class Switch_Info(object):
                 most_profitable, self.algos[most_profitable][1]))
 
         # Figure out which algo to mine
-        if self.current_algo is None:
+        if self.current_algo is None or self.current_algo == '':
             self.current_algo = most_profitable
-            return self.current_algo
 
         elif (self.current_algo is not most_profitable and 
-                self.switch_minutes_left > 0 and self.current_algo != ''):
+                self.switch_minutes_left > 0):
             # Faster switching for significantly higher profit algo
             if (self.algos[most_profitable][1] > 
                     self.algos[self.current_algo][1] * (1 + 
                     self.switch_override_pct)):
                 self.current_algo = most_profitable
                 self.switch_minutes_left = self.switch_minutes
-                return self.current_algo
             else:
                 self.switch_minutes_left -= 1
-                return self.current_algo
         
         elif (self.current_algo is not most_profitable and 
                 self.switch_minutes_left <= 0):
             self.switch_minutes_left = self.switch_minutes
             self.current_algo = most_profitable
-            return self.current_algo
 
         else:
             self.switch_minutes_left = self.switch_minutes
-            return most_profitable
+
+        # Return the appropriate algorithm to mine
+        return self.current_algo
 
 class Switch_Thread(object):
     """A wrapper for miner switching"""
 
-    def __init__(self, commands: dict, cmd_type: str) -> None:
+    def __init__(self, commands: dict[str, str], cmd_type: str) -> None:
         """ :param commands = dictionary of key value pairs of algo_name: 
              algo_command. algo_command must be one argument (the call)
             :param cmd_type = what you would prepend the command with to run 
