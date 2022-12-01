@@ -7,14 +7,13 @@ from time import sleep
 class NH_API_Calls(object):
     """Handler for Nicehash api calls"""
     def __init__(self, host) -> None:
-        """:param host = the api to be queried"""
+        """:param host: the api to be queried"""
         self.host = host
 
-    def request(self, method: str, path: str):
+    def __request(self, method: str, path: str):
         """
-        :param method = http request method
-        :param path = path from host (defined during initialization)
-        : 
+        :param method: http request method
+        :param path: path from host (defined during initialization)
         """
         url = self.host + path
 
@@ -30,12 +29,34 @@ class NH_API_Calls(object):
             raise Exception(str(response.status_code) + ": " + 
                 response.reason)
 
+    def __get_btc_whattomine(self) -> dict:
+        """Fallback call to whattomine in the event NiceHash has issues with prices"""
+        s = requests.Session()
+        response = s.request("GET", "https://whattomine.com/coins/1.json?hr=70.0&p=2800.0&fee=0.0&cost=0.1&cost_currency=USD&hcost=0.0&span_br=1h&span_d=")
+
+        if response.status_code == 200:
+            return response.json()
+        elif response.content:
+            raise Exception(str(response.status_code) + ": " + 
+                response.reason + ": " + str(response.content))
+        else:
+            raise Exception(str(response.status_code) + ": " + 
+                response.reason)
+
     def get_multialgo_info(self):
         """Gets the paying rate of all nicehash algorithms in a json format"""
-        return self.request('GET', '/main/api/v2/public/simplemultialgo/info/')
+        return self.__request('GET', '/main/api/v2/public/simplemultialgo/info/')
     
     def get_prices(self):
-        return self.request('GET', '/exchange/api/v2/info/prices')
+        """
+        Gets the price of BTC from the NiceHash API, falling back to whattomine.com if there is an 
+        issue
+        """
+        response = self.__request('GET', '/exchange/api/v2/info/prices')
+        if len(response):
+            return response['BTCUSDT']
+        else:
+            return self.__get_btc_whattomine()['exchange_rate']
 
 
 class Switch_Info(object):
@@ -44,15 +65,16 @@ class Switch_Info(object):
     def __init__(self, 
         host: str = 'https://api2.nicehash.com', 
         switch_minutes: int = 1,
-        algos: dict[str, list[int]] = {"etchash": [71500000, 0]}, 
+        algos: dict = {"etchash": [71500000, 0]}, 
         switch_override_pct: int = 20
     ) -> None:
-        """ :param host = the api to be queried
-            :param switch_minutes = minutes to wait before switching
-            :param algos = Dictionary of the format "name": [speed, pay (set
-             to 0)]
-            :param switch_override_pct = time override for switching in 
-             percent (20% would be input as 20)
+        """ 
+        :param host: the api to be queried
+        :param switch_minutes: minutes to wait before switching
+        :param algos: Dictionary of the format "name": [speed, pay (set
+            to 0)]
+        :param switch_override_pct: time override for switching in 
+            percent (20% would be input as 20)
         """
         
         self.switch_minutes: int = switch_minutes
@@ -80,7 +102,7 @@ class Switch_Info(object):
         try:
             response = self.NH_Query.get_prices()
             # Parse and return the response
-            return float(response['BTCUSDT'])
+            return float(response)
         except Exception as ex:
             print("Unexpected error: ", ex)
             sleep(5)
@@ -103,8 +125,9 @@ class Switch_Info(object):
             stats[1] = int(algo_stats[algo] * stats[0])
 
     def algo_to_mine(self) -> str:
-        """ :return the algo name that should be currently mined.
-            MUST be externally limited to avoid excessive API calls!
+        """ 
+        :return the algo name that should be currently mined. MUST be externally limited to avoid 
+        excessive API calls!
         """
         # API calling for stats
         btc_price = self.get_btc_price()
@@ -145,19 +168,20 @@ class Switch_Info(object):
 class Switch_Thread(object):
     """A wrapper for miner switching"""
 
-    def __init__(self, commands: dict[str, str], cmd_type: str) -> None:
-        """ :param commands = dictionary of key value pairs of algo_name: 
-             algo_command. algo_command must be one argument (the call)
-            :param cmd_type = what you would prepend the command with to run 
-             it in your OS (i.e., ./ or .\ or bash or etc.)
+    def __init__(self, commands: dict, cmd_type: str) -> None:
+        """ 
+        :param commands = dictionary of key value pairs of algo_name: algo_command. algo_command
+         must be one argument (the call)
+        :param cmd_type = what you would prepend the command with to run it in your OS
+         (i.e., ./ or .\ or bash or etc.)
         """
         self.comands: dict = commands
         self.current_algo: str = ""
         self.current_miner: subprocess.Popen = None
         self.cmd_type: str = cmd_type
 
-
     def run_miner(self, name: str) -> None:
+        """Runs the miner with the given name by its related command"""
         if self.current_miner is None:
             print("Starting {}...".format(name))
             self.current_miner = subprocess.Popen([self.cmd_type, 
@@ -170,6 +194,7 @@ class Switch_Thread(object):
                 self.comands[name]], preexec_fn=os.setsid)
 
     def stop(self) -> None:
+        """Stops the currently running miner, if any"""
         # Send the keyboard interupt signal then wait
         try:
             print("Killing...")
@@ -179,12 +204,13 @@ class Switch_Thread(object):
             print("Error: {}".format(ex))
             self.current_miner.kill()
         
-
     def set_current(self, name: str) -> None:
+        """Sets the current runnint miner"""
         if (name != self.current_algo):
             self.run_miner(name)
             self.current_algo = name
 
     def __del__(self) -> None:
-    	if self.current_algo != None:
+        """Destructor to stop the currently running (external) miner"""
+        if self.current_algo != None:
         	self.stop()
