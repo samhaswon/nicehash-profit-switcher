@@ -52,10 +52,13 @@ class NH_API_Calls(object):
         Gets the price of BTC from the NiceHash API, falling back to whattomine.com if there is an 
         issue
         """
-        response = self.__request('GET', '/exchange/api/v2/info/prices')
-        if len(response):
-            return response['BTCUSDT']
-        else:
+        try:
+            response = self.__request('GET', '/exchange/api/v2/info/prices')
+            if len(response):
+                return response['BTCUSDT']
+            else:
+                return self.__get_btc_whattomine()['exchange_rate']
+        except Exception:
             return self.__get_btc_whattomine()['exchange_rate']
 
 
