@@ -68,8 +68,9 @@ class Switch_Info(object):
     def __init__(self, 
         host: str = 'https://api2.nicehash.com', 
         switch_minutes: int = 1,
-        algos: dict = {"etchash": [71500000, 0]}, 
-        switch_override_pct: int = 20
+        algos: dict = {"etchash": [71500000, 0, 220]}, 
+        switch_override_pct: int = 20,
+        electric_cost: float = 0.1
     ) -> None:
         """ 
         :param host: the api to be queried
@@ -86,6 +87,8 @@ class Switch_Info(object):
         self.current_algo: str = None
         self.switch_override_pct: float = switch_override_pct * 0.01
         self.NH_Query: NH_API_Calls = NH_API_Calls(host)
+        self.electric_cost: float = electric_cost
+        self.btc_price: float = 0.0
 
     def get_algo_info(self) -> dict:
         """api query for algo info"""
@@ -105,6 +108,7 @@ class Switch_Info(object):
         try:
             response = self.NH_Query.get_prices()
             # Parse and return the response
+            self.btc_price = float(response)
             return float(response)
         except Exception as ex:
             print("Unexpected error: ", ex)
@@ -112,32 +116,33 @@ class Switch_Info(object):
             return self.get_btc_price()
 
     def get_most_profit(self, algos: dict) -> str:
-        """Returns the current most profitable coin"""
+        """:returns: the current most profitable coin name"""
         return max(algos.items(), key=lambda x: x[1][1])[0]
 
-    def print_algos(self, btc_price: float) -> None:
+    def print_algos(self) -> None:
         """Print algos and their profitability in sat and USDT"""
         print("")
         for algo, stats in self.algos.items():
             print("{0: <16}".format(algo), ":", "{0: >4}".format(stats[1]), 
-                "sat or ${:0.2f}".format(stats[1] / 100000000 * btc_price))
+                "sat or ${:0.2f}".format(stats[1] / 100000000 * self.btc_price))
 
     def set_profits(self, algos: dict, algo_stats: dict) -> None:
         """Set the profitability of each algorithm in algos, originally 0"""
         for algo, stats in algos.items():
-            stats[1] = int(algo_stats[algo] * stats[0])
+            stats[1] = int(algo_stats[algo.lower()] * stats[0] - ((stats[2] * self.electric_cost *
+                24) / self.btc_price * 100000000))
 
     def algo_to_mine(self) -> str:
         """ 
-        :return the algo name that should be currently mined. MUST be externally limited to avoid 
+        :returns: the algo name that should be currently mined. MUST be externally limited to avoid 
         excessive API calls!
         """
         # API calling for stats
-        btc_price = self.get_btc_price()
+        self.get_btc_price()
         self.set_profits(self.algos, self.get_algo_info())
 
         # Algos printing
-        self.print_algos(btc_price)
+        self.print_algos()
         most_profitable = self.get_most_profit(self.algos)
         print("\n{} is the most profitable at {}sat/day\n".format(
                 most_profitable, self.algos[most_profitable][1]))
@@ -166,7 +171,7 @@ class Switch_Info(object):
             self.switch_minutes_left = self.switch_minutes
 
         # Return the appropriate algorithm to mine
-        return self.current_algo
+        return (self.current_algo, self.algos[most_profitable][1])
 
 class Switch_Thread(object):
     """A wrapper for miner switching"""
@@ -209,11 +214,13 @@ class Switch_Thread(object):
         
     def set_current(self, name: str) -> None:
         """Sets the current runnint miner"""
-        if (name != self.current_algo):
+        if (name != self.current_algo and len(name)):
             self.run_miner(name)
+            self.current_algo = name
+        elif (name != self.current_algo and not len(name)):
             self.current_algo = name
 
     def __del__(self) -> None:
         """Destructor to stop the currently running (external) miner"""
-        if self.current_algo != None:
+        if len(self.current_algo):
         	self.stop()
