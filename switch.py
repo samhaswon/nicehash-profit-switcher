@@ -218,7 +218,7 @@ class Switch_Thread(object):
             self.current_algo = name
         elif (name != self.current_algo and not len(name)):
             self.current_algo = name
-        # Make sure no errors have occured
+        # Make sure no errors have occured by polling the subprocess (None = good)
         if len(self.current_algo) and subprocess.Popen.poll(self.current_miner):
             print("Error detected, restarting miner.")
             self.run_miner(name)

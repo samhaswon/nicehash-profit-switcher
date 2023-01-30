@@ -1,7 +1,7 @@
 # nicehash-profit-switcher
 Just a simple program to query NiceHash's api and switch external miners based on the current profit situation. It is primarily designed to be used with external scripts for individual algo overclocking, but could be adapted to be used in other ways.
 
-**Requires Python 3**, developed using version *3.8.10*
+**Requires Python 3**, developed using version *3.10.6*
 
 ## Setup
 To setup the program, open main.py to edit two dictionaries: algos and commands.
