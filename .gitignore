@@ -7,3 +7,8 @@ delete.py
 notes.txt
 main_old.py
 __pycache__/switch.cpython-39.pyc
+*.pyc
+*.xml
+*.iml
+.idea/
+test_switch.py
