@@ -194,7 +194,6 @@ class Switch_Thread(object):
             print("Starting {}...".format(name))
             self.current_miner = subprocess.Popen([self.cmd_type, 
                 self.comands[name]], preexec_fn=os.setsid)
-        
         else:
             self.stop()
             print("Starting {}...".format(name))
@@ -213,12 +212,16 @@ class Switch_Thread(object):
             self.current_miner.kill()
         
     def set_current(self, name: str) -> None:
-        """Sets the current runnint miner"""
+        """Sets the current running miner"""
         if (name != self.current_algo and len(name)):
             self.run_miner(name)
             self.current_algo = name
         elif (name != self.current_algo and not len(name)):
             self.current_algo = name
+        # Make sure no errors have occured
+        if len(self.current_algo) and subprocess.Popen.poll(self.current_miner):
+            print("Error detected, restarting miner.")
+            self.run_miner(name)
 
     def __del__(self) -> None:
         """Destructor to stop the currently running (external) miner"""
